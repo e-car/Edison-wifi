@@ -11,7 +11,6 @@ int timeoutCount = 0;
 WiFiClient client;
 WiFiClient lastClient;
 WiFiServer server(3000); // 3000番ポートを指定
-boolean alreadyConnected = false; // クライアントとの接続を確認
 int timeOutConnect = 0;
 boolean connectStatus;
 
@@ -40,18 +39,11 @@ void loop() {
   Serial.println("[[[ loop start ]]]");
   //　サーバー(Edison)として指定したポートにクライアント(Android)からのアクセスがあるか確認。あれば、接続する 
   client = server.available();
-  Serial.print("client status : ");
+  Serial.print("Client Status : ");
   Serial.println(client);
   
   // クライアント(Android)が存在する場合
-  if(client) {
-    // 一番初めの接続を検出
-    if(client != lastClient) {
-      Serial.println("New Client");
-      // ポートに溜まっているデータを破棄
-      client.flush();
-    }
-    
+  if(client) { 
     // クライアント(Android)とサーバー(Edison)
     // 処理に約5秒かかる
     connectStatus = client.connected();
@@ -60,19 +52,23 @@ void loop() {
     
     if(connectStatus) {
       Serial.println("Connected to Client");
+      client.println("TEST");
+      Serial.println("TEST");
+      
+      // close the connection:
+      client.stop();
       
       while(client.available() > 0) {
-//        timeOutConnect = 0;
-//        Serial.println("Data Exist");
         char revChar = client.read(); // read from TCP buffer
-        client.println(revChar);
-        Serial.println(revChar);
+//        client.println(revChar);
+//        Serial.println(revChar);
         
 //        /***********************************************************************************/
 //        switch(revChar) {  
 //          case 'G':
-//            client.println(makePackage(ev86));
-//            break;
+//         　client.println(makePackage(ev86));
+//           client.println("TEST");
+//           break;
 //          case 'S':
 //            client.flush();
 //            client.stop();
@@ -90,19 +86,9 @@ void loop() {
 
         delay(10); // assuring time for Edison to send data
       }
-      
-//      timeOutConnect++;
-    } else {
-      Serial.println("Disconnected to Client");
     }
   }
-  else {
-    Serial.println("No Client"); 
-  } 
-  
-  // 今回のclientの接続状態を保存する
-  lastClient = client;
-  delay(100);
+  delay(300);
 }
 
 
