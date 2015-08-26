@@ -1,6 +1,6 @@
 #include <signal.h> // you must write down this line to resolve problem between WiFiSocket and Serial communication
 #include <WiFi.h>
-#include "EV86.h"
+
 
 /* -------------------------------- Wifi Parameters  -------------------------------- */
 char ssid[] = "BUFFALO-4C7A25"; // your network SSID (name), nakayama:506A 304HWa-84F1A0
@@ -8,17 +8,13 @@ char pass[] = "iebiu6ichxufg"; // your network password (use for WPA, or use as 
 int keyIndex = 0; // your network key Index number (needed only for WEP)
 int status = WL_IDLE_STATUS;
 int timeoutCount = 0;
-WiFiClient client;
+
 WiFiClient lastClient;
-WiFiServer server(3000); // 3000番ポートを指定
+WiFiServer server(9090); // 9090番ポートを指定
 boolean alreadyConnected = false; // クライアントとの接続を確認
 int timeOutConnect = 0;
 boolean connectStatus;
 
-// EV86インスタンス生成
-EV86 ev86();
-
-/* -------------------------------- arduino main section -------------------------------- */
 void setup() {
   /* you must write down a following line */
   signal(SIGPIPE, SIG_IGN); // caution !! Please don't erase this line
@@ -39,70 +35,45 @@ void setup() {
 void loop() {
   Serial.println("[[[ loop start ]]]");
   //　サーバー(Edison)として指定したポートにクライアント(Android)からのアクセスがあるか確認。あれば、接続する 
-  client = server.available();
+  WiFiClient client = server.available();
   Serial.print("client status : ");
   Serial.println(client);
   
   // クライアント(Android)が存在する場合
   if(client) {
-    // 一番初めの接続を検出
-    if(client != lastClient) {
-      Serial.println("New Client");
-      // ポートに溜まっているデータを破棄
-      client.flush();
-    }
-    
+    Serial.println("New Client");
     // クライアント(Android)とサーバー(Edison)
-    // 処理に約5秒かかる
-    connectStatus = client.connected();
-    Serial.print("Connect Status : ");
-    Serial.println(connectStatus);
-    
-    if(connectStatus) {
-      Serial.println("Connected to Client");
-      
-      while(client.available() > 0) {
-//        timeOutConnect = 0;
-//        Serial.println("Data Exist");
+    // 処理に約5秒かかる  
+    while (client.connected() > 0) {
+      Serial.print("Connect Status : ");
+      Serial.println(client.connected());  
+      if (client.available()) {
         char revChar = client.read(); // read from TCP buffer
-        client.println(revChar);
+        //client.println(revChar);
         Serial.println(revChar);
-        
-//        /***********************************************************************************/
-//        switch(revChar) {  
-//          case 'G':
-//            client.println(makePackage(ev86));
-//            break;
-//          case 'S':
-//            client.flush();
-//            client.stop();
-//            Serial.println("Application client requested [Stop Command]");
-//            delay(1000);
-//            break;
-//          case 'C':
-//            client.println("test");
-//            break;
-//          default:
-//            client.println("Error");
-//            break;
-//        }
-//        /***********************************************************************************/
-
-        delay(10); // assuring time for Edison to send data
+        /***********************************************************************************/
+        switch(revChar) {  
+          case 'G':
+            client.println("test EV86 car data");
+            break;
+          case 'S':
+            // close the connection:
+            client.flush();
+            client.stop();
+            Serial.println("client disonnected");
+            break;
+          case 'C':
+            client.println("Yahoo!!!!!");
+            break;
+          default:
+            client.println("Error");
+            break;
+        }
+        /***********************************************************************************/
       }
-      
-//      timeOutConnect++;
-    } else {
-      Serial.println("Disconnected to Client");
+      delay(1);
     }
   }
-  else {
-    Serial.println("No Client"); 
-  } 
-  
-  // 今回のclientの接続状態を保存する
-  lastClient = client;
-  delay(100);
 }
 
 
