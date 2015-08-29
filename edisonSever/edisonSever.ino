@@ -7,12 +7,10 @@ char ssid[] = "BUFFALO-4C7A25"; // your network SSID (name), nakayama:506A 304HW
 char pass[] = "iebiu6ichxufg"; // your network password (use for WPA, or use as key for WEP), nakayama:12345678 11237204a
 int keyIndex = 0; // your network key Index number (needed only for WEP)
 int status = WL_IDLE_STATUS;
-int timeoutCount = 0;
-
 WiFiClient lastClient;
 WiFiServer server(9090); // 9090番ポートを指定
-boolean alreadyConnected = false; // クライアントとの接続を確認
-int timeOutConnect = 0;
+int socketTimeCount = 0;
+int socketTimeOut = 20;
 boolean connectStatus;
 
 void setup() {
@@ -36,43 +34,72 @@ void loop() {
   Serial.println("[[[ loop start ]]]");
   //　サーバー(Edison)として指定したポートにクライアント(Android)からのアクセスがあるか確認。あれば、接続する 
   WiFiClient client = server.available();
-  Serial.print("client status : ");
+  Serial.print("Client Status : ");
   Serial.println(client);
-  
+
   // クライアント(Android)が存在する場合
-  if(client) {
+  if (client) { 
     Serial.println("New Client");
+    socketTimeCount = 0;
+    
     // クライアント(Android)とサーバー(Edison)
-    // 処理に約5秒かかる  
-    while (client.connected() > 0) {
+    // 処理に約5秒かかる
+    while ((connectStatus = client.connected())) { // 注意!! client.connected()関数にはバグあり!
+      Serial.print("Socket TimeCount : ");
+      Serial.println(socketTimeCount);
       Serial.print("Connect Status : ");
-      Serial.println(client.connected());  
-      if (client.available()) {
+      Serial.println(connectStatus);
+      
+      if (client.available() > 0) {
+        socketTimeCount = 0;
         char revChar = client.read(); // read from TCP buffer
-        //client.println(revChar);
-        Serial.println(revChar);
+        Serial.print("Get [");
+        Serial.print(revChar);
+        Serial.print("] -> Send  : ");
+        // クライアントからのリクエストの受け取りとその処理
         /***********************************************************************************/
         switch(revChar) {  
           case 'G':
+          // センサーデータ取得 from XBee
+            Serial.println("Sensor Data by XBee");
+            /*****************************************************************/
+            Serial.println("test");
+            client.println("test");
+            /*****************************************************************/
+            break;
+          
+          case 'T':
+            Serial.println("test EV86 car data");
             client.println("test EV86 car data");
             break;
+            
           case 'S':
             // close the connection:
+            Serial.println("Stop Signal & Close Socket");
             client.flush();
             client.stop();
             Serial.println("client disonnected");
             break;
-          case 'C':
-            client.println("Yahoo!!!!!");
-            break;
+          
           default:
-            client.println("Error");
+            Serial.println("Error : Request from Client is invalid");
+            client.println("Error : Request from Client is invalid");
             break;
         }
         /***********************************************************************************/
+      } else {
+        socketTimeCount++;
       }
-      delay(1);
+      
+      // 一定時間クライアントから応答がなければ、サーバー側からSocketを切る * client.connected()のバグ対策
+      if (socketTimeCount > socketTimeOut) {
+        Serial.println("Socket TimeOut. close Socket from this server");
+        client.flush();
+        client.stop();
+        break;
+      }
     }
+  delay(500);
   }
 }
 
